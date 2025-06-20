@@ -53,6 +53,13 @@ func main() {
         })
     })
 
+    g.GET("/task", func (c *gin.Context) {
+        c.JSON(http.StatusOK, gin.H {
+            "ready": len(results),
+            "in_progress": lastId - len(results) + 1,
+        })
+    })
+
     g.GET("/task/:id", func (c *gin.Context) {
         id, err := strconv.Atoi(c.Param("id"))
         if err != nil {

@@ -1,20 +1,25 @@
 package main
 
 import (
-	"fmt"
-	"net/http"
-	"strconv"
-	"time"
+    "fmt"
+    "net/http"
+    "strconv"
+    "time"
+    "math/rand/v2"
+    "sync"
 
-	"github.com/gin-gonic/gin"
+    "github.com/gin-gonic/gin"
 )
 
-var results []string  // TODO random delay+hashmap
+var results map[int]string
+var resultsLock sync.Mutex
 var lastId = -1
 
-func say_hello(target string) {
-    time.Sleep(time.Second * 60)
-    results = append(results, fmt.Sprintf("Hello, %s!", target))
+func say_hello(target string, int id) {
+    time.Sleep(time.Second * 50 + rand.IntN(20))
+    resultsLock.Lock()
+    results[id] = fmt.Sprintf("Hello, %s!", target)
+    resultsLock.Unlock()
 }
 
 func worker(in chan string) {
@@ -47,9 +52,8 @@ func main() {
         }
 
         in <- json.Target  // TODO may be blocking; use buffering+select
-        lastId += 1
         c.JSON(http.StatusOK, gin.H {
-            "id": lastId,
+            "id": lastId + 1,
         })
     })
 

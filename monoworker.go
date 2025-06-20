@@ -15,8 +15,8 @@ var results map[int]string
 var resultsLock sync.Mutex
 var lastId = -1
 
-func say_hello(target string, int id) {
-    time.Sleep(time.Second * 50 + rand.IntN(20))
+func say_hello(target string, id int) {
+    time.Sleep(time.Second * time.Duration(50 + rand.IntN(20)))
     resultsLock.Lock()
     results[id] = fmt.Sprintf("Hello, %s!", target)
     resultsLock.Unlock()
@@ -24,7 +24,9 @@ func say_hello(target string, int id) {
 
 func worker(in chan string) {
     for {
-        go say_hello(<-in)
+        target := <-in
+        lastId += 1
+        go say_hello(target, lastId)
     }
 }
 
@@ -33,6 +35,7 @@ type CreateRequest struct {
 }
 
 func main() {
+    results = make(map[int]string)
     in := make(chan string)
     go worker(in)
 

@@ -7,13 +7,14 @@ import (
     "time"
     "math/rand/v2"
     "sync"
+    "sync/atomic"
 
     "github.com/gin-gonic/gin"
 )
 
 var results map[int]string
 var resultsLock sync.Mutex
-var lastId = -1
+var lastId atomic.Int32
 
 func say_hello(target string, id int) {
     time.Sleep(time.Second * time.Duration(50 + rand.IntN(20)))
@@ -25,8 +26,8 @@ func say_hello(target string, id int) {
 func worker(in chan string) {
     for {
         target := <-in
-        lastId += 1
-        go say_hello(target, lastId)
+        lastId.Add(1)
+        go say_hello(target, int(lastId.Load()))
     }
 }
 
@@ -36,6 +37,8 @@ type CreateRequest struct {
 
 func main() {
     results = make(map[int]string)
+    lastId.Store(-1)
+
     in := make(chan string)
     go worker(in)
 
@@ -56,14 +59,14 @@ func main() {
 
         in <- json.Target  // TODO may be blocking; use buffering+select
         c.JSON(http.StatusOK, gin.H {
-            "id": lastId + 1,
+            "id": lastId.Load() + 1,
         })
     })
 
     g.GET("/task", func (c *gin.Context) {
         c.JSON(http.StatusOK, gin.H {
             "ready": len(results),
-            "in_progress": lastId - len(results) + 1,
+            "in_progress": int(lastId.Load()) - len(results) + 1,
         })
     })
 
@@ -76,7 +79,7 @@ func main() {
 
         var status string
         switch {
-        case id > lastId:
+        case id > int(lastId.Load()):
             status = "non_existent"
         case id >= len(results):
             status = "in_progress"

@@ -94,13 +94,12 @@ func main() {
         }
 
         var status string
-        switch {
-        case id > lastId:
+        if id > lastId {
             status = "non_existent"
-        case id >= len(results):
-            status = "in_progress"
-        default:
+        } else if _, exists := results[id]; exists {
             status = "ready"
+        } else {
+            status = "in_progress"
         }
 
         c.JSON(http.StatusOK, gin.H {
@@ -115,16 +114,15 @@ func main() {
             return
         }
 
-        if id >= len(results) {
+        if result, exists := results[id]; exists {
+            c.JSON(http.StatusOK, gin.H {
+                "result": result,
+            })
+        } else {
             c.JSON(http.StatusBadRequest, gin.H {
                 "error": fmt.Sprintf("no result with id %d", id),
             })
-            return
         }
-
-        c.JSON(http.StatusOK, gin.H {
-            "result": results[id],
-        })
     })
 
     g.Run()

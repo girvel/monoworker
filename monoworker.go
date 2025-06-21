@@ -119,7 +119,7 @@ func main() {
                 "result": result,
             })
         } else {
-            c.JSON(http.StatusBadRequest, gin.H {
+            c.JSON(http.StatusNotFound, gin.H {
                 "error": fmt.Sprintf("no result with id %d", id),
             })
         }

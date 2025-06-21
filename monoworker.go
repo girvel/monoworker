@@ -39,7 +39,7 @@ func main() {
     results = make(map[int]string)
     lastId.Store(-1)
 
-    in := make(chan string)
+    in := make(chan string, 1024)
     go worker(in)
 
     g := gin.Default()
@@ -57,10 +57,14 @@ func main() {
             return
         }
 
-        in <- json.Target  // TODO may be blocking; use buffering+select
-        c.JSON(http.StatusOK, gin.H {
-            "id": lastId.Load() + 1,
-        })
+        select {
+        case in <- json.Target:
+            c.JSON(http.StatusOK, gin.H {
+                "id": lastId.Load() + 1,
+            })
+        default:
+            c.JSON(http.StatusServiceUnavailable, gin.H {"error": "system busy"})
+        }
     })
 
     g.GET("/task", func (c *gin.Context) {

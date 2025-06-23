@@ -1,7 +1,8 @@
 package monoworker
 
 import (
-    "sync"
+	"log/slog"
+	"sync"
 )
 
 type Task[T any] struct {
@@ -28,6 +29,7 @@ func NewWorker[In any, Out any](process func(In) Out) *Worker[In, Out] {
 }
 
 func (w *Worker[In, Out]) Run() {
+    slog.Info("Starting the worker")
     for {
         go w.executeTask(<-w.in)
     }

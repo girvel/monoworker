@@ -2,6 +2,7 @@ package monoworker
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -13,6 +14,7 @@ type CreateRequest struct {
 }
 
 func RunAPI(worker *Worker[string, string]) {
+    slog.Info("Creating API")
     g := gin.Default()
 
     g.GET("/ping", func (c *gin.Context) {
@@ -69,5 +71,6 @@ func RunAPI(worker *Worker[string, string]) {
         }
     })
 
+    slog.Info("Running API")
     g.Run()
 }

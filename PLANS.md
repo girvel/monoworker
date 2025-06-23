@@ -2,7 +2,8 @@
 
 - [ ] Resolve TODOs
 - [ ] Review
-- [ ] Split into files?
+- [x] Split into files?
+- [ ] Logging
 - [ ] Handle SIGINT/SIGTERM?
 - [ ] Docs?
 - [ ] Tests?

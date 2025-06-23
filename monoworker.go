@@ -16,35 +16,83 @@ type Task struct {
     id int
 }
 
-func createTask(in chan Task, target string) (int, bool) {
-    lastIdLock.Lock()
-    defer lastIdLock.Unlock()
+// TODO generic over string?
+type Worker struct {
+    results map[int]string
+    resultsLock sync.Mutex
+    lastId int
+    lastIdLock sync.Mutex
+    in chan Task
+}
+
+func NewWorker() *Worker {
+    return &Worker{
+        results: make(map[int]string),
+        lastId: -1,
+        in: make(chan Task, 1024),
+    }
+}
+
+func (w *Worker) Run() {
+    for {
+        go w.executeTask(<-w.in)
+    }
+}
+
+func (w *Worker) executeTask(task Task) {
+    result := say_hello(task)
+
+    w.resultsLock.Lock()
+    defer w.resultsLock.Unlock()
+    w.results[task.id] = result
+}
+
+func (w *Worker) CreateTask(target string) (int, bool) {
+    w.lastIdLock.Lock()
+    defer w.lastIdLock.Unlock()
 
     select {
-    case in <- Task{target, lastId + 1}:
-        lastId++
-        return lastId, true
+    case w.in <- Task{target, w.lastId + 1}:
+        w.lastId++
+        return w.lastId, true
     default:
         return -1, false
     }
 }
 
-var results map[int]string
-var resultsLock sync.Mutex
-var lastId int = -1
-var lastIdLock sync.Mutex
+type TaskStatus string
 
-func say_hello(task Task) {
-    time.Sleep(time.Second * time.Duration(50 + rand.IntN(20)))
-    resultsLock.Lock()
-    results[task.id] = fmt.Sprintf("Hello, %s!", task.target)
-    resultsLock.Unlock()
+const (
+    Ready       TaskStatus = "ready"
+    InProgress  TaskStatus = "in_progress"
+    NonExistent TaskStatus = "non_existent"
+)
+
+func (w Worker) GetTaskStatus(id int) TaskStatus {
+    if id > w.lastId {
+        return "non_existent"
+    } else if _, exists := w.results[id]; exists {
+        return "ready"
+    } else {
+        return "in_progress"
+    }
 }
 
-func worker(in chan Task) {
-    for {
-        go say_hello(<-in)
+func (w Worker) GetStats() map[string]int {
+    return map[string]int{
+        "ready": len(w.results),
+        "in_progress": w.lastId - len(w.results) + 1,
     }
+}
+
+func (w Worker) GetTaskResult(id int) (string, bool) {
+    result, exists := w.results[id]
+    return result, exists
+}
+
+func say_hello(task Task) string {
+    time.Sleep(time.Second * time.Duration(50 + rand.IntN(20)))
+    return fmt.Sprintf("Hello, %s!", task.target)
 }
 
 type CreateRequest struct {
@@ -52,10 +100,8 @@ type CreateRequest struct {
 }
 
 func main() {
-    results = make(map[int]string)
-
-    in := make(chan Task, 1024)
-    go worker(in)
+    worker := NewWorker()
+    go worker.Run()
 
     g := gin.Default()
 
@@ -72,7 +118,7 @@ func main() {
             return
         }
 
-        if id, ok := createTask(in, json.Target); ok {
+        if id, ok := worker.CreateTask(json.Target); ok {
             c.JSON(http.StatusOK, gin.H{"id": id})
         } else {
             c.JSON(http.StatusServiceUnavailable, gin.H {"error": "system busy"})
@@ -80,10 +126,7 @@ func main() {
     })
 
     g.GET("/task", func (c *gin.Context) {
-        c.JSON(http.StatusOK, gin.H {
-            "ready": len(results),
-            "in_progress": lastId - len(results) + 1,
-        })
+        c.JSON(http.StatusOK, worker.GetStats())
     })
 
     g.GET("/task/:id", func (c *gin.Context) {
@@ -93,17 +136,8 @@ func main() {
             return
         }
 
-        var status string
-        if id > lastId {
-            status = "non_existent"
-        } else if _, exists := results[id]; exists {
-            status = "ready"
-        } else {
-            status = "in_progress"
-        }
-
         c.JSON(http.StatusOK, gin.H {
-            "status": status,
+            "status": worker.GetTaskStatus(id),
         })
     })
 
@@ -114,7 +148,7 @@ func main() {
             return
         }
 
-        if result, exists := results[id]; exists {
+        if result, exists := worker.GetTaskResult(id); exists {
             c.JSON(http.StatusOK, gin.H {
                 "result": result,
             })

@@ -12,6 +12,11 @@ type Task[T any] struct {
     id int
 }
 
+type Config struct {
+    MaxBufferedTasks int
+    MaxActiveTasks int
+}
+
 type Worker[In any, Out any] struct {
     results map[int]Out
     resultsLock sync.Mutex
@@ -22,13 +27,13 @@ type Worker[In any, Out any] struct {
     taskSemaphore chan struct{}
 }
 
-func NewWorker[In any, Out any](process func(In) Out) *Worker[In, Out] {
+func NewWorker[In any, Out any](process func(In) Out, config Config) *Worker[In, Out] {
     return &Worker[In, Out]{
         results: make(map[int]Out),
         lastId: -1,
-        in: make(chan Task[In], 1024),
+        in: make(chan Task[In], config.MaxBufferedTasks),
         process: process,
-        taskSemaphore: make(chan struct{}, 10),
+        taskSemaphore: make(chan struct{}, config.MaxActiveTasks),
     }
 }
 
@@ -38,7 +43,16 @@ func (w *Worker[In, Out]) Run() {
 
     slog.Info("Starting the worker")
     for {
-        go w.executeTask(<-w.in)
+        if cap(w.taskSemaphore) > 0 {
+            w.taskSemaphore <- struct{}{}
+        }
+
+        go func() {
+            w.executeTask(<-w.in)
+            if cap(w.taskSemaphore) > 0 {
+                <-w.taskSemaphore
+            }
+        }()
     }
 }
 
@@ -58,9 +72,6 @@ func (w *Worker[In, Out]) handleInterrupts() {
 }
 
 func (w *Worker[In, Out]) executeTask(task Task[In]) {
-    w.taskSemaphore <- struct{}{}
-    defer func() { <-w.taskSemaphore }()
-
     result := w.process(task.target)
 
     w.resultsLock.Lock()
@@ -90,7 +101,10 @@ const (
     NonExistent TaskStatus = "nonExistent"
 )
 
-func (w Worker[In, Out]) GetTaskStatus(id int) TaskStatus {
+func (w *Worker[In, Out]) GetTaskStatus(id int) TaskStatus {
+    w.resultsLock.Lock()
+    defer w.resultsLock.Unlock()
+
     if id > w.lastId {
         return NonExistent
     } else if _, exists := w.results[id]; exists {
@@ -118,7 +132,10 @@ func (w *Worker[In, Out]) GetStats() Stats {
     }
 }
 
-func (w Worker[In, Out]) GetTaskResult(id int) (Out, bool) {
+func (w *Worker[In, Out]) GetTaskResult(id int) (Out, bool) {
+    w.resultsLock.Lock()
+    defer w.resultsLock.Unlock()
+
     result, exists := w.results[id]
     return result, exists
 }

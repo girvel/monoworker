@@ -14,7 +14,11 @@ func sayHello(input string) string {
 }
 
 func main() {
-    worker := monoworker.NewWorker(sayHello)
+    worker := monoworker.NewWorker(sayHello, monoworker.Config{
+        MaxBufferedTasks: 5,
+        MaxActiveTasks: 10,
+    })
+
     go worker.Run()
     monoworker.RunAPI(worker)
 }

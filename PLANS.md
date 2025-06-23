@@ -17,7 +17,7 @@
 
 ## 1.0
 
-- [ ] Docs?
+- [x] Docs?
 - [ ] README: launching, testing, commentary
 - [ ] Review
 - [ ] Resolve TODOs

@@ -18,3 +18,5 @@ func TestPingRoute(t *testing.T) {
         t.Errorf("/ping errored out with code %d", w.Code)
     }
 }
+
+// TODO other endpoints

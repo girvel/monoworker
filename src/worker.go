@@ -7,36 +7,40 @@ import (
 	"os/signal"
 )
 
-type Task[T any] struct {
+type task[T any] struct {
     target T
     id int
 }
 
+// Configuration for monoworker.Worker
 type Config struct {
-    MaxBufferedTasks int
-    MaxActiveTasks int
+    MaxBufferedTasks int  // Max number of queued tasks; should be > 0
+    MaxActiveTasks int  // Max number of executing tasks; unlimited if 0
 }
 
+// Abstract multithreaded asynchronous worker
 type Worker[In any, Out any] struct {
     results map[int]Out
     resultsLock sync.Mutex
     lastId int
     lastIdLock sync.Mutex
-    in chan Task[In]
+    in chan task[In]
     process func(In) Out
     taskSemaphore chan struct{}
 }
 
+// Create new worker from a function doing the work
 func NewWorker[In any, Out any](process func(In) Out, config Config) *Worker[In, Out] {
     return &Worker[In, Out]{
         results: make(map[int]Out),
         lastId: -1,
-        in: make(chan Task[In], config.MaxBufferedTasks),
+        in: make(chan task[In], config.MaxBufferedTasks),
         process: process,
         taskSemaphore: make(chan struct{}, config.MaxActiveTasks),
     }
 }
 
+// Launch the main loop; infinite, ignores SIGINTs if there are tasks in progress
 func (w *Worker[In, Out]) Run() {
     slog.Info("Taking control of interrupts")
     go w.handleInterrupts()
@@ -71,7 +75,7 @@ func (w *Worker[In, Out]) handleInterrupts() {
     }
 }
 
-func (w *Worker[In, Out]) executeTask(task Task[In]) {
+func (w *Worker[In, Out]) executeTask(task task[In]) {
     result := w.process(task.target)
 
     w.resultsLock.Lock()
@@ -79,12 +83,13 @@ func (w *Worker[In, Out]) executeTask(task Task[In]) {
     w.results[task.id] = result
 }
 
+// Plan new task; returns -1, false if queue is full
 func (w *Worker[In, Out]) CreateTask(target In) (int, bool) {
     w.lastIdLock.Lock()
     defer w.lastIdLock.Unlock()
 
     select {
-    case w.in <- Task[In]{target, w.lastId + 1}:
+    case w.in <- task[In]{target, w.lastId + 1}:
         w.lastId++
         return w.lastId, true
     default:
@@ -114,11 +119,13 @@ func (w *Worker[In, Out]) GetTaskStatus(id int) TaskStatus {
     }
 }
 
+// General statistics about the worker & its tasks
 type Stats struct {
-    Ready int `json:"ready"`
-    InProgress int `json:"inProgress"`
+    Ready int `json:"ready"`  // Number of finished tasks
+    InProgress int `json:"inProgress"`  // Number of executing/queued tasks
 }
 
+// Retrieve general statistics about the worker & its tasks
 func (w *Worker[In, Out]) GetStats() Stats {
     // because lastId and len(results) are connected
     w.resultsLock.Lock()
@@ -132,6 +139,7 @@ func (w *Worker[In, Out]) GetStats() Stats {
     }
 }
 
+// Returns false as a second result if task isn't finished/doesn't exist
 func (w *Worker[In, Out]) GetTaskResult(id int) (Out, bool) {
     w.resultsLock.Lock()
     defer w.resultsLock.Unlock()

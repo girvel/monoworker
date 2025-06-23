@@ -9,10 +9,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type CreateRequest struct {
+type createRequest struct {
     Target string `json:"target"`
 }
 
+// Build Gin-based HTTP API for the worker
 func BuildAPI(worker *Worker[string, string]) *gin.Engine {
     slog.Info("Creating API")
     g := gin.Default()
@@ -24,7 +25,7 @@ func BuildAPI(worker *Worker[string, string]) *gin.Engine {
     })
 
     g.POST("/task", func (c *gin.Context) {
-        var json CreateRequest
+        var json createRequest
         if err := c.ShouldBindJSON(&json); err != nil {
             c.JSON(http.StatusBadRequest, gin.H {"error": err.Error()})
             return

@@ -30,3 +30,69 @@ go test github.com/girvel/monoworker/src
 - Можно сконфигурировать лимиты для очереди задач/количества одновременно выполняющихся задач
 - Нельзя случайно потерять данные, пустив SIGINT -- пока у воркера есть таски, он будет кидаться ворнингами и не давать; приложение всё ещё можно выключить, просто через SIGKILL или Ctrl+\
 - Код разбит по файлам на самого воркера и его апи, внутренние функции/структуры/поля оформлены как приватные
+
+## Эндпоинты
+
+### GET /ping
+
+Ответ:
+
+```json
+{
+    "result": "pong"
+}
+```
+
+### POST /task
+
+Запрос:
+
+```json
+{
+    "target": "<any string>"
+}
+```
+
+Ответ:
+
+```json
+{
+    "id": <int>
+}
+```
+
+### GET /task
+
+Ответ:
+
+```json
+{
+    "in_progress": <int>,
+    "ready": <int>
+}
+```
+
+### GET /task/:id
+
+Ответ:
+
+```json
+{
+    "status": "in_progress"
+}
+```
+
+```json
+{
+    "status": "non_existent"
+}
+```
+
+```json
+{
+    "status": "ready",
+    "result": "Hello, <any string>",
+    "duration_sec": <float>,
+    "created": <timestamp>
+}
+```

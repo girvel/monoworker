@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"math/rand/v2"
 	"time"
 
@@ -14,11 +15,14 @@ func sayHello(input string) string {
 }
 
 func main() {
+    slog.Info("Starting monoworker")
     worker := monoworker.NewWorker(sayHello, monoworker.Config{
         MaxBufferedTasks: 5,
         MaxActiveTasks: 10,
     })
 
     go worker.Run()
-    monoworker.RunAPI(worker)
+
+    slog.Info("Running API")
+    monoworker.BuildAPI(worker).Run()
 }

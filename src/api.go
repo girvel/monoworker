@@ -13,7 +13,7 @@ type CreateRequest struct {
     Target string `json:"target"`
 }
 
-func RunAPI(worker *Worker[string, string]) {
+func BuildAPI(worker *Worker[string, string]) *gin.Engine {
     slog.Info("Creating API")
     g := gin.Default()
 
@@ -71,6 +71,5 @@ func RunAPI(worker *Worker[string, string]) {
         }
     })
 
-    slog.Info("Running API")
-    g.Run()
+    return g
 }

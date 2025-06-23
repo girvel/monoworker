@@ -11,9 +11,9 @@
 
 - [x] Goroutine limit
 - [x] Buffer size
-- [ ] Tests
-- [ ] Join /task and /result
-- [ ] Log processing time
+- [x] Tests
+- [-] Join /task and /result
+- [-] Log processing time
 
 ## 1.0
 

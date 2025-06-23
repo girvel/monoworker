@@ -24,3 +24,5 @@ func TestAsynchronicity(t *testing.T) {
         t.Errorf("Expected 2 tasks to finish, got %d", ready)
     }
 }
+
+// TODO test state, config values, etc...

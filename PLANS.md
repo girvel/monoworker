@@ -5,11 +5,11 @@
 - [x] Split into files?
 - [x] Logging
 - [x] Handle SIGINT/SIGTERM?
-- [ ] Purge snake_case
+- [x] Purge snake_case
 
 ## 0.3
 
-- [ ] Goroutine limit
+- [x] Goroutine limit
 - [ ] Buffer size
 - [ ] Timeouts
 - [ ] Tests

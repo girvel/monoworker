@@ -19,6 +19,7 @@ type Worker[In any, Out any] struct {
     lastIdLock sync.Mutex
     in chan Task[In]
     process func(In) Out
+    taskSemaphore chan struct{}
 }
 
 func NewWorker[In any, Out any](process func(In) Out) *Worker[In, Out] {
@@ -27,6 +28,7 @@ func NewWorker[In any, Out any](process func(In) Out) *Worker[In, Out] {
         lastId: -1,
         in: make(chan Task[In], 1024),
         process: process,
+        taskSemaphore: make(chan struct{}, 10),
     }
 }
 
@@ -56,6 +58,9 @@ func (w *Worker[In, Out]) handleInterrupts() {
 }
 
 func (w *Worker[In, Out]) executeTask(task Task[In]) {
+    w.taskSemaphore <- struct{}{}
+    defer func() { <-w.taskSemaphore }()
+
     result := w.process(task.target)
 
     w.resultsLock.Lock()

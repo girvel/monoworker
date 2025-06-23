@@ -45,13 +45,13 @@ func (w *Worker[In, Out]) handleInterrupts() {
     signal.Notify(interrupt, os.Interrupt)
     for {
         <-interrupt
-        in_progress := w.GetStats().InProgress
-        if in_progress == 0 {
+        inProgress := w.GetStats().InProgress
+        if inProgress == 0 {
             slog.Info("SIGINT, shutting down gracefully...")
             os.Exit(0)
         }
 
-        slog.Warn("SIGINT attempt", "tasks_in_progress", in_progress)
+        slog.Warn("SIGINT attempt", "tasksInProgress", inProgress)
     }
 }
 
@@ -72,6 +72,7 @@ func (w *Worker[In, Out]) CreateTask(target In) (int, bool) {
         w.lastId++
         return w.lastId, true
     default:
+        slog.Warn("Failed to create task, queue full")
         return -1, false
     }
 }
@@ -80,8 +81,8 @@ type TaskStatus string
 
 const (
     Ready       TaskStatus = "ready"
-    InProgress  TaskStatus = "in_progress"
-    NonExistent TaskStatus = "non_existent"
+    InProgress  TaskStatus = "inProgress"
+    NonExistent TaskStatus = "nonExistent"
 )
 
 func (w Worker[In, Out]) GetTaskStatus(id int) TaskStatus {
@@ -96,7 +97,7 @@ func (w Worker[In, Out]) GetTaskStatus(id int) TaskStatus {
 
 type Stats struct {
     Ready int `json:"ready"`
-    InProgress int `json:"in_progress"`
+    InProgress int `json:"inProgress"`
 }
 
 func (w *Worker[In, Out]) GetStats() Stats {

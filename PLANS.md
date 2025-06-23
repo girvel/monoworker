@@ -19,6 +19,6 @@
 
 - [x] Docs?
 - [x] README: launching, testing, commentary
-- [ ] Review
+- [x] Review
 - [x] Resolve TODOs
-- [ ] Send
+- [x] Send

@@ -23,6 +23,7 @@ func main() {
 
     go worker.Run()
 
+    api := monoworker.BuildAPI(worker)
     slog.Info("Running API")
-    monoworker.BuildAPI(worker).Run()
+    api.Run()
 }

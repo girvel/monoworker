@@ -1,11 +1,24 @@
-# Plans:
+# Plans
+
+## 0.2
 
 - [x] Split into files?
 - [x] Logging
 - [x] Handle SIGINT/SIGTERM?
-- [ ] Docs?
-- [ ] Tests?
 - [ ] Purge snake_case
+
+## 0.3
+
+- [ ] Goroutine limit
+- [ ] Buffer size
+- [ ] Timeouts
+- [ ] Tests
+- [ ] Join /task and /result
+- [ ] Log processing time
+
+## 1.0
+
+- [ ] Docs?
 - [ ] README: launching, commentary
 - [ ] Review
 - [ ] Resolve TODOs

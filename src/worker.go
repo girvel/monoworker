@@ -86,11 +86,11 @@ const (
 
 func (w Worker[In, Out]) GetTaskStatus(id int) TaskStatus {
     if id > w.lastId {
-        return "non_existent"
+        return NonExistent
     } else if _, exists := w.results[id]; exists {
-        return "ready"
+        return Ready
     } else {
-        return "in_progress"
+        return InProgress
     }
 }
 

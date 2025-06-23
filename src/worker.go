@@ -3,6 +3,8 @@ package monoworker
 import (
 	"log/slog"
 	"sync"
+	"os"
+	"os/signal"
 )
 
 type Task[T any] struct {
@@ -29,9 +31,27 @@ func NewWorker[In any, Out any](process func(In) Out) *Worker[In, Out] {
 }
 
 func (w *Worker[In, Out]) Run() {
+    slog.Info("Taking control of interrupts")
+    go w.handleInterrupts()
+
     slog.Info("Starting the worker")
     for {
         go w.executeTask(<-w.in)
+    }
+}
+
+func (w *Worker[In, Out]) handleInterrupts() {
+    interrupt := make(chan os.Signal, 1)
+    signal.Notify(interrupt, os.Interrupt)
+    for {
+        <-interrupt
+        in_progress := w.GetStats().InProgress
+        if in_progress == 0 {
+            slog.Info("SIGINT, shutting down gracefully...")
+            os.Exit(0)
+        }
+
+        slog.Warn("SIGINT attempt", "tasks_in_progress", in_progress)
     }
 }
 
@@ -74,10 +94,21 @@ func (w Worker[In, Out]) GetTaskStatus(id int) TaskStatus {
     }
 }
 
-func (w Worker[In, Out]) GetStats() map[string]int {
-    return map[string]int{
-        "ready": len(w.results),
-        "in_progress": w.lastId - len(w.results) + 1,
+type Stats struct {
+    Ready int `json:"ready"`
+    InProgress int `json:"in_progress"`
+}
+
+func (w *Worker[In, Out]) GetStats() Stats {
+    // because lastId and len(results) are connected
+    w.resultsLock.Lock()
+    w.lastIdLock.Lock()
+    defer w.resultsLock.Unlock()
+    defer w.lastIdLock.Unlock()
+
+    return Stats{
+        Ready: len(w.results),
+        InProgress: w.lastId - len(w.results) + 1,
     }
 }
 

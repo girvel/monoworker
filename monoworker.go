@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-    "time"
-    "math/rand/v2"
+	"math/rand/v2"
+	"time"
 
 	monoworker "github.com/girvel/monoworker/src"
 )

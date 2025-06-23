@@ -1,54 +1,52 @@
 package monoworker
 
 import (
-    "fmt"
-    "time"
-    "math/rand/v2"
     "sync"
 )
 
-type Task struct {
-    target string
+type Task[T any] struct {
+    target T
     id int
 }
 
-// TODO generic over string?
-type Worker struct {
-    results map[int]string
+type Worker[In any, Out any] struct {
+    results map[int]Out
     resultsLock sync.Mutex
     lastId int
     lastIdLock sync.Mutex
-    in chan Task
+    in chan Task[In]
+    process func(In) Out
 }
 
-func NewWorker() *Worker {
-    return &Worker{
-        results: make(map[int]string),
+func NewWorker[In any, Out any](process func(In) Out) *Worker[In, Out] {
+    return &Worker[In, Out]{
+        results: make(map[int]Out),
         lastId: -1,
-        in: make(chan Task, 1024),
+        in: make(chan Task[In], 1024),
+        process: process,
     }
 }
 
-func (w *Worker) Run() {
+func (w *Worker[In, Out]) Run() {
     for {
         go w.executeTask(<-w.in)
     }
 }
 
-func (w *Worker) executeTask(task Task) {
-    result := say_hello(task)
+func (w *Worker[In, Out]) executeTask(task Task[In]) {
+    result := w.process(task.target)
 
     w.resultsLock.Lock()
     defer w.resultsLock.Unlock()
     w.results[task.id] = result
 }
 
-func (w *Worker) CreateTask(target string) (int, bool) {
+func (w *Worker[In, Out]) CreateTask(target In) (int, bool) {
     w.lastIdLock.Lock()
     defer w.lastIdLock.Unlock()
 
     select {
-    case w.in <- Task{target, w.lastId + 1}:
+    case w.in <- Task[In]{target, w.lastId + 1}:
         w.lastId++
         return w.lastId, true
     default:
@@ -64,7 +62,7 @@ const (
     NonExistent TaskStatus = "non_existent"
 )
 
-func (w Worker) GetTaskStatus(id int) TaskStatus {
+func (w Worker[In, Out]) GetTaskStatus(id int) TaskStatus {
     if id > w.lastId {
         return "non_existent"
     } else if _, exists := w.results[id]; exists {
@@ -74,19 +72,14 @@ func (w Worker) GetTaskStatus(id int) TaskStatus {
     }
 }
 
-func (w Worker) GetStats() map[string]int {
+func (w Worker[In, Out]) GetStats() map[string]int {
     return map[string]int{
         "ready": len(w.results),
         "in_progress": w.lastId - len(w.results) + 1,
     }
 }
 
-func (w Worker) GetTaskResult(id int) (string, bool) {
+func (w Worker[In, Out]) GetTaskResult(id int) (Out, bool) {
     result, exists := w.results[id]
     return result, exists
-}
-
-func say_hello(task Task) string {
-    time.Sleep(time.Second * time.Duration(50 + rand.IntN(20)))
-    return fmt.Sprintf("Hello, %s!", task.target)
 }

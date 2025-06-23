@@ -4,18 +4,24 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+    "time"
+    "math/rand/v2"
 
 	"github.com/gin-gonic/gin"
 	monoworker "github.com/girvel/monoworker/src"
 )
 
+func say_hello(input string) string {
+    time.Sleep(time.Second * time.Duration(50 + rand.IntN(20)))
+    return fmt.Sprintf("Hello, %s!", input)
+}
 
 type CreateRequest struct {
     Target string `json:"target"`
 }
 
 func main() {
-    worker := monoworker.NewWorker()
+    worker := monoworker.NewWorker(say_hello)
     go worker.Run()
 
     g := gin.Default()

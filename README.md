@@ -13,7 +13,7 @@ go run .
 Продакшен сервер:
 
 ```bash
-GIN_MODE=release PORT=80 go run .
+GIN_MODE=release PORT=8080 go run .
 ```
 
 Тесты:

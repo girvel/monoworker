@@ -2,14 +2,22 @@ package monoworker
 
 import (
 	"log/slog"
-	"sync"
 	"os"
 	"os/signal"
+	"sync"
+	"time"
 )
 
 type task[T any] struct {
     target T
     id int
+    created time.Time
+}
+
+type Result[T any] struct {
+    result T
+    created time.Time
+    duration time.Duration
 }
 
 // Configuration for monoworker.Worker
@@ -20,7 +28,7 @@ type Config struct {
 
 // Abstract multithreaded asynchronous worker
 type Worker[In any, Out any] struct {
-    results map[int]Out
+    results map[int]Result[Out]
     resultsLock sync.Mutex
     lastId int
     lastIdLock sync.Mutex
@@ -32,7 +40,7 @@ type Worker[In any, Out any] struct {
 // Create new worker from a function doing the work
 func NewWorker[In any, Out any](process func(In) Out, config Config) *Worker[In, Out] {
     return &Worker[In, Out]{
-        results: make(map[int]Out),
+        results: make(map[int]Result[Out]),
         lastId: -1,
         in: make(chan task[In], config.MaxBufferedTasks),
         process: process,
@@ -76,11 +84,17 @@ func (w *Worker[In, Out]) handleInterrupts() {
 }
 
 func (w *Worker[In, Out]) executeTask(task task[In]) {
+    start := time.Now()
     result := w.process(task.target)
+    duration := time.Now().Sub(start)
 
     w.resultsLock.Lock()
     defer w.resultsLock.Unlock()
-    w.results[task.id] = result
+    w.results[task.id] = Result[Out]{
+        result: result,
+        created: task.created,
+        duration: duration,
+    }
 }
 
 // Plan new task; returns -1, false if queue is full
@@ -89,7 +103,7 @@ func (w *Worker[In, Out]) CreateTask(target In) (int, bool) {
     defer w.lastIdLock.Unlock()
 
     select {
-    case w.in <- task[In]{target, w.lastId + 1}:
+    case w.in <- task[In]{target, w.lastId + 1, time.Now()}:
         w.lastId++
         return w.lastId, true
     default:
@@ -140,7 +154,7 @@ func (w *Worker[In, Out]) GetStats() Stats {
 }
 
 // Returns false as a second result if task isn't finished/doesn't exist
-func (w *Worker[In, Out]) GetTaskResult(id int) (Out, bool) {
+func (w *Worker[In, Out]) GetTaskResult(id int) (Result[Out], bool) {
     w.resultsLock.Lock()
     defer w.resultsLock.Unlock()
 

@@ -1,7 +1,6 @@
 package monoworker
 
 import (
-	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -49,27 +48,18 @@ func BuildAPI(worker *Worker[string, string]) *gin.Engine {
             return
         }
 
-        c.JSON(http.StatusOK, gin.H {
+        response := gin.H {
             "status": worker.GetTaskStatus(id),
-        })
-    })
-
-    g.GET("/result/:id", func(c *gin.Context) {
-        id, err := strconv.Atoi(c.Param("id"))
-        if err != nil {
-            c.JSON(http.StatusBadRequest, gin.H {"error": "id should be a number"})
-            return
         }
 
-        if result, exists := worker.GetTaskResult(id); exists {
-            c.JSON(http.StatusOK, gin.H {
-                "result": result,
-            })
-        } else {
-            c.JSON(http.StatusNotFound, gin.H {
-                "error": fmt.Sprintf("no result with id %d", id),
-            })
+        if response["status"] == Ready {
+            result, _ := worker.GetTaskResult(id)
+            response["result"] = result.result
+            response["created"] = result.created
+            response["duration_sec"] = result.duration.Seconds()
         }
+
+        c.JSON(http.StatusOK, response)
     })
 
     return g
